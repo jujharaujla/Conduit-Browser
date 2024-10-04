@@ -1,0 +1,15 @@
+{
+  "name": "relay-browser",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Multi-screen Electron browser with locked settings workflows, full workspace restart, individual screen reset, guarded sync, and local Tor routing.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "check": "node --check src/main.js && node --check src/core.js && node --check src/tor-manager.js && node --check src/tor-bridge.js && node --check src/preload.js && node --check src/page-preload.js && node --check src/renderer/app.js && npm test"
+  },
+  "devDependencies": {
+    "electron": "^37.2.3"
+  }
+}

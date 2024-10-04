@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relay test page</title>
+  <style>
+    body { margin: 24px; max-width: 680px; font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #222; }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    p { line-height: 1.5; }
+    label { display: block; margin: 16px 0 5px; }
+    input[type="text"], select { width: 100%; max-width: 420px; height: 34px; padding: 0 8px; }
+    button { margin-top: 16px; height: 34px; padding: 0 12px; }
+    #count { font-weight: 700; }
+    .space { height: 700px; border-left: 1px solid #bbb; margin: 25px 0; padding-left: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Relay test page</h1>
+  <p>Turn on <strong>Sync activity</strong>. Type, change the checkbox and menu, click the button, and scroll in Screen 1. The other visible screens should follow.</p>
+  <label for="message">Text</label>
+  <input id="message" type="text" placeholder="Type here" />
+  <label><input id="enabled" type="checkbox" /> Checkbox</label>
+  <label for="choice">Menu</label>
+  <select id="choice"><option>First</option><option>Second</option><option>Third</option></select>
+  <div><button id="increment">Increment</button> Count: <span id="count">0</span></div>
+  <div class="space">Scroll test</div>
+  <p>Bottom of the test page.</p>
+  <script>
+    let count = 0;
+    document.querySelector('#increment').addEventListener('click', () => {
+      count += 1;
+      document.querySelector('#count').textContent = String(count);
+    });
+  </script>
+</body>
+</html>
