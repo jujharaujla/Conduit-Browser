@@ -18,15 +18,16 @@
         <input id="address" value="relay://welcome" autocomplete="off" spellcheck="false" aria-label="Address or search" />
       </form>
       <button id="restart-all" class="restart-button" title="Clear and rebuild every screen">Restart everything</button>
-      <button id="open-settings" class="settings-button" title="Open every Relay setting">Settings</button>
+      <button id="open-settings" class="settings-button" title="Open Relay settings and diagnostics">Settings</button>
     </div>
 
     <div class="control-row">
       <div class="workspace-summary" aria-label="Current workspace settings">
         <span id="summary-screens" class="summary-chip">4 screens</span>
         <span id="summary-zoom" class="summary-chip">100% zoom</span>
-        <span id="summary-network" class="summary-chip">Direct</span>
+        <span id="summary-network" class="summary-chip">Direct connection</span>
         <span id="summary-sync" class="summary-chip">Sync off</span>
+        <span id="summary-protection" class="summary-chip protected">Protection on</span>
       </div>
 
       <div class="status-area">
@@ -45,9 +46,9 @@
     <section id="setup-dialog" class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title">
       <header class="setup-header">
         <div>
-          <p id="setup-eyebrow" class="eyebrow">Relay 0.9</p>
-          <h1 id="setup-title">Set up your workspace</h1>
-          <p id="setup-intro" class="setup-intro">Every setting is applied behind this locked screen. Browser panes stay inaccessible until the full operation finishes.</p>
+          <p id="setup-eyebrow" class="eyebrow">Relay 0.10</p>
+          <h1 id="setup-title">Workspace settings</h1>
+          <p id="setup-intro" class="setup-intro">Every change is finalized behind this locked screen. The browser panes remain inaccessible until the operation is complete.</p>
         </div>
         <button id="setup-cancel" class="icon-close" aria-label="Close settings" hidden>×</button>
       </header>
@@ -94,8 +95,8 @@
             <div class="section-title">
               <span class="section-number">2</span>
               <div>
-                <h2>Network and DNS route</h2>
-                <p>Direct is immediate. Tor split connects to a Tor SOCKS service already running on your Mac.</p>
+                <h2>Connection mode</h2>
+                <p>Choose one normal connection or isolated private routes for the browser screens.</p>
               </div>
             </div>
 
@@ -103,23 +104,23 @@
               <label class="route-card">
                 <input type="radio" name="setup-network" value="direct" checked />
                 <span>
-                  <strong>Direct</strong>
-                  <small>Use your normal internet connection.</small>
+                  <strong>Direct connection</strong>
+                  <small>Use your normal internet connection for every screen.</small>
                 </span>
               </label>
 
               <label class="route-card">
                 <input type="radio" name="setup-network" value="tor" />
                 <span>
-                  <strong>Tor split</strong>
-                  <small>A separate SOCKS identity is created for every screen.</small>
+                  <strong>Multiple private connections</strong>
+                  <small>Give every screen a separate private routing identity.</small>
                 </span>
               </label>
             </div>
 
             <div class="tor-note">
-              Relay does not launch Tor itself. Before choosing Tor split, run
-              <code>brew install tor</code> and <code>brew services start tor</code>, or open Tor Browser.
+              Multiple private connections are powered by a local Tor service; they are not separate commercial VPN subscriptions. Start it with
+              <code>brew install tor</code> and <code>brew services start tor</code>, or leave Tor Browser open.
             </div>
           </section>
 
@@ -127,7 +128,7 @@
             <label class="toggle-card">
               <input id="setup-check-ips" type="checkbox" checked />
               <span>
-                <strong>Verify public IPs</strong>
+                <strong>Verify public connections</strong>
                 <small>Check every visible screen before unlocking the workspace.</small>
               </span>
             </label>
@@ -141,12 +142,31 @@
             </label>
           </section>
 
-          <section class="option-section reset-section">
+          <section class="option-section protection-section">
             <div class="section-title">
               <span class="section-number">3</span>
               <div>
+                <h2>Enforced protection</h2>
+                <p>Ad and tracker requests are blocked at the network-session level on every screen.</p>
+              </div>
+            </div>
+
+            <div class="protection-card">
+              <span class="protection-icon">✓</span>
+              <span>
+                <strong>Ad and tracker protection is always on</strong>
+                <small id="protection-detail">Checking blocked-request totals…</small>
+              </span>
+              <span class="enforced-badge">Enforced</span>
+            </div>
+          </section>
+
+          <section class="option-section reset-section">
+            <div class="section-title">
+              <span class="section-number">4</span>
+              <div>
                 <h2>Reset an individual screen</h2>
-                <p>Clear cookies, cache, site storage, DNS state, and the current Tor identity for only one screen.</p>
+                <p>Clear cookies, cache, site storage, DNS state, and the current private-route identity for only one screen.</p>
               </div>
             </div>
 
@@ -160,8 +180,24 @@
         </div>
 
         <aside id="setup-progress-panel" class="setup-progress-panel">
-          <p id="progress-eyebrow" class="eyebrow">Setup progress</p>
-          <h2 id="progress-title">Preparing Relay</h2>
+          <div class="panel-heading">
+            <div>
+              <p id="progress-eyebrow" class="eyebrow">Diagnostics and progress</p>
+              <h2 id="progress-title">Relay is ready</h2>
+            </div>
+            <span id="diagnostic-issue-count" class="issue-count">No issues</span>
+          </div>
+
+          <div class="progress-meter" aria-label="Operation progress">
+            <div class="progress-meter-track">
+              <div id="progress-meter-fill" class="progress-meter-fill"></div>
+            </div>
+            <div class="progress-meter-labels">
+              <strong id="progress-percent">0%</strong>
+              <span id="progress-current">Waiting for an operation</span>
+            </div>
+          </div>
+
           <ol class="progress-list">
             <li id="progress-step-0" class="progress-step">
               <span class="step-icon">1</span>
@@ -169,11 +205,11 @@
             </li>
             <li id="progress-step-1" class="progress-step">
               <span class="step-icon">2</span>
-              <span><strong>Network and DNS route</strong><small>Waiting</small></span>
+              <span><strong>Connection and DNS route</strong><small>Waiting</small></span>
             </li>
             <li id="progress-step-2" class="progress-step">
               <span class="step-icon">3</span>
-              <span><strong>Public-IP verification</strong><small>Waiting</small></span>
+              <span><strong>Public-connection verification</strong><small>Waiting</small></span>
             </li>
             <li id="progress-step-3" class="progress-step">
               <span class="step-icon">4</span>
@@ -181,13 +217,22 @@
             </li>
           </ol>
 
+          <div class="console-heading">
+            <div>
+              <p class="eyebrow">Settings console</p>
+              <h3>Live diagnostics</h3>
+            </div>
+            <button id="clear-diagnostics" class="text-button">Clear</button>
+          </div>
+          <div id="diagnostic-console" class="diagnostic-console" role="log" aria-live="polite"></div>
+
           <div id="setup-error" class="setup-error" hidden></div>
         </aside>
       </div>
 
       <footer class="setup-footer">
         <button id="setup-back" class="secondary-button" hidden>Back to settings</button>
-        <button id="continue-direct" class="secondary-button" hidden>Continue in Direct</button>
+        <button id="continue-direct" class="secondary-button" hidden>Use Direct connection</button>
         <button id="setup-launch" class="primary-button">Apply settings</button>
       </footer>
     </section>
