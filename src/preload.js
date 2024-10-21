@@ -15,7 +15,9 @@ contextBridge.exposeInMainWorld('relay', {
   restartEverything: () => ipcRenderer.invoke('restart-everything'),
   resetScreen: (screenNumber) => ipcRenderer.invoke('reset-screen', screenNumber),
   setSetupVisible: (visible) => ipcRenderer.invoke('set-setup-visible', visible),
+  getAdBlockStatus: () => ipcRenderer.invoke('get-adblock-status'),
   onState: (callback) => ipcRenderer.on('browser-state', (_event, state) => callback(state)),
   onLayout: (callback) => ipcRenderer.on('layout-state', (_event, state) => callback(state)),
   onOperationProgress: (callback) => ipcRenderer.on('operation-progress', (_event, progress) => callback(progress)),
+  onDiagnostic: (callback) => ipcRenderer.on('diagnostic-log', (_event, entry) => callback(entry)),
 });
