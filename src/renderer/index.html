@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Relay</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles-v11.css" />
 </head>
 <body>
   <header class="toolbar">
@@ -18,7 +19,7 @@
         <input id="address" value="relay://welcome" autocomplete="off" spellcheck="false" aria-label="Address or search" />
       </form>
       <button id="restart-all" class="restart-button" title="Clear and rebuild every screen">Restart everything</button>
-      <button id="open-settings" class="settings-button" title="Open Relay settings and diagnostics">Settings</button>
+      <button id="open-settings" class="settings-button" title="Open Relay settings">Settings</button>
     </div>
 
     <div class="control-row">
@@ -26,8 +27,8 @@
         <span id="summary-screens" class="summary-chip">4 screens</span>
         <span id="summary-zoom" class="summary-chip">100% zoom</span>
         <span id="summary-network" class="summary-chip">Direct connection</span>
-        <span id="summary-sync" class="summary-chip">Sync off</span>
-        <span id="summary-protection" class="summary-chip protected">Protection on</span>
+        <span id="summary-sync" class="summary-chip">Screen 1 control off</span>
+        <span id="summary-protection" class="summary-chip protected">Ad blocker on</span>
       </div>
 
       <div class="status-area">
@@ -46,21 +47,29 @@
     <section id="setup-dialog" class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title">
       <header class="setup-header">
         <div>
-          <p id="setup-eyebrow" class="eyebrow">Relay 0.10</p>
+          <p id="setup-eyebrow" class="eyebrow">Relay 0.11</p>
           <h1 id="setup-title">Workspace settings</h1>
-          <p id="setup-intro" class="setup-intro">Every change is finalized behind this locked screen. The browser panes remain inaccessible until the operation is complete.</p>
+          <p id="setup-intro" class="setup-intro">Screen 1 leads the workspace. Changes are finalized behind this locked screen before browser access returns.</p>
         </div>
         <button id="setup-cancel" class="icon-close" aria-label="Close settings" hidden>×</button>
       </header>
 
       <div id="setup-content" class="setup-content">
         <div id="setup-options" class="setup-options">
+          <section class="controller-note">
+            <span class="controller-mark">1</span>
+            <span>
+              <strong>Screen 1 is the controller</strong>
+              <small>Clicks, typing, navigation, and scroll position flow from Screen 1 to the follower screens.</small>
+            </span>
+          </section>
+
           <section class="option-section">
             <div class="section-title">
               <span class="section-number">1</span>
               <div>
                 <h2>Workspace</h2>
-                <p>Choose the visible pane count and shared page zoom.</p>
+                <p>Choose the visible screen count and shared page zoom.</p>
               </div>
             </div>
 
@@ -96,7 +105,7 @@
               <span class="section-number">2</span>
               <div>
                 <h2>Connection mode</h2>
-                <p>Choose one normal connection or isolated private routes for the browser screens.</p>
+                <p>Use one normal connection or separate private identities for the browser screens.</p>
               </div>
             </div>
 
@@ -105,7 +114,7 @@
                 <input type="radio" name="setup-network" value="direct" checked />
                 <span>
                   <strong>Direct connection</strong>
-                  <small>Use your normal internet connection for every screen.</small>
+                  <small>Use your normal internet connection.</small>
                 </span>
               </label>
 
@@ -113,13 +122,13 @@
                 <input type="radio" name="setup-network" value="tor" />
                 <span>
                   <strong>Multiple private connections</strong>
-                  <small>Give every screen a separate private routing identity.</small>
+                  <small>Give each screen a separate private routing identity.</small>
                 </span>
               </label>
             </div>
 
             <div class="tor-note">
-              Multiple private connections are powered by a local Tor service; they are not separate commercial VPN subscriptions. Start it with
+              Private connections use a local Tor service; they are not separate commercial VPN subscriptions. Start it with
               <code>brew install tor</code> and <code>brew services start tor</code>, or leave Tor Browser open.
             </div>
           </section>
@@ -129,15 +138,15 @@
               <input id="setup-check-ips" type="checkbox" checked />
               <span>
                 <strong>Verify public connections</strong>
-                <small>Check every visible screen before unlocking the workspace.</small>
+                <small>Check each visible screen before unlocking.</small>
               </span>
             </label>
 
             <label class="toggle-card">
               <input id="setup-sync" type="checkbox" />
               <span>
-                <strong>Synchronize activity</strong>
-                <small>Mirror supported actions from Screen 1.</small>
+                <strong>Screen 1 controls followers</strong>
+                <small>Mirror supported activity and keep followers aligned.</small>
               </span>
             </label>
           </section>
@@ -146,35 +155,35 @@
             <div class="section-title">
               <span class="section-number">3</span>
               <div>
-                <h2>Enforced protection</h2>
-                <p>Ad and tracker requests are blocked at the network-session level on every screen.</p>
+                <h2>Ad and tracker protection</h2>
+                <p>Protection is on by default, but can be disabled for websites that reject blockers.</p>
               </div>
             </div>
 
-            <div class="protection-card">
-              <span class="protection-icon">✓</span>
+            <label class="toggle-card protection-toggle">
+              <input id="setup-adblock" type="checkbox" checked />
               <span>
-                <strong>Ad and tracker protection is always on</strong>
-                <small id="protection-detail">Checking blocked-request totals…</small>
+                <strong>Block ads and trackers</strong>
+                <small id="protection-detail">Checking protection status…</small>
               </span>
-              <span class="enforced-badge">Enforced</span>
-            </div>
+            </label>
+            <p class="compatibility-note">Changing this may refresh site content. Some websites can interrupt the page or sign you out.</p>
           </section>
 
           <section class="option-section reset-section">
             <div class="section-title">
               <span class="section-number">4</span>
               <div>
-                <h2>Reset an individual screen</h2>
-                <p>Clear cookies, cache, site storage, DNS state, and the current private-route identity for only one screen.</p>
+                <h2>Reset one screen</h2>
+                <p>Clear cookies, cache, storage, DNS state, and its current private identity.</p>
               </div>
             </div>
 
             <div class="screen-reset-grid">
-              <button class="screen-reset-button" data-screen="1"><strong>Reset Screen 1</strong><small>Controller screen</small></button>
-              <button class="screen-reset-button" data-screen="2"><strong>Reset Screen 2</strong><small>Independent session</small></button>
-              <button class="screen-reset-button" data-screen="3"><strong>Reset Screen 3</strong><small>Independent session</small></button>
-              <button class="screen-reset-button" data-screen="4"><strong>Reset Screen 4</strong><small>Independent session</small></button>
+              <button class="screen-reset-button" data-screen="1"><strong>Reset Screen 1</strong><small>Controller</small></button>
+              <button class="screen-reset-button" data-screen="2"><strong>Reset Screen 2</strong><small>Follows Screen 1</small></button>
+              <button class="screen-reset-button" data-screen="3"><strong>Reset Screen 3</strong><small>Follows Screen 1</small></button>
+              <button class="screen-reset-button" data-screen="4"><strong>Reset Screen 4</strong><small>Follows Screen 1</small></button>
             </div>
           </section>
         </div>
@@ -182,10 +191,10 @@
         <aside id="setup-progress-panel" class="setup-progress-panel">
           <div class="panel-heading">
             <div>
-              <p id="progress-eyebrow" class="eyebrow">Diagnostics and progress</p>
-              <h2 id="progress-title">Relay is ready</h2>
+              <p id="progress-eyebrow" class="eyebrow">Progress</p>
+              <h2 id="progress-title">Ready</h2>
             </div>
-            <span id="diagnostic-issue-count" class="issue-count">No issues</span>
+            <span id="diagnostic-issue-count" class="issue-count">All good</span>
           </div>
 
           <div class="progress-meter" aria-label="Operation progress">
@@ -194,33 +203,33 @@
             </div>
             <div class="progress-meter-labels">
               <strong id="progress-percent">0%</strong>
-              <span id="progress-current">Waiting for an operation</span>
+              <span id="progress-current">Waiting</span>
             </div>
           </div>
 
           <ol class="progress-list">
             <li id="progress-step-0" class="progress-step">
               <span class="step-icon">1</span>
-              <span><strong>Workspace layout and zoom</strong><small>Waiting</small></span>
+              <span><strong>Workspace and protection</strong><small>Waiting</small></span>
             </li>
             <li id="progress-step-1" class="progress-step">
               <span class="step-icon">2</span>
-              <span><strong>Connection and DNS route</strong><small>Waiting</small></span>
+              <span><strong>Connections</strong><small>Waiting</small></span>
             </li>
             <li id="progress-step-2" class="progress-step">
               <span class="step-icon">3</span>
-              <span><strong>Public-connection verification</strong><small>Waiting</small></span>
+              <span><strong>Connection check</strong><small>Waiting</small></span>
             </li>
             <li id="progress-step-3" class="progress-step">
               <span class="step-icon">4</span>
-              <span><strong>Synchronization preference</strong><small>Waiting</small></span>
+              <span><strong>Screen 1 control</strong><small>Waiting</small></span>
             </li>
           </ol>
 
-          <div class="console-heading">
+          <div class="console-heading compact-console-heading">
             <div>
-              <p class="eyebrow">Settings console</p>
-              <h3>Live diagnostics</h3>
+              <p class="eyebrow">Status</p>
+              <h3>Connection log</h3>
             </div>
             <button id="clear-diagnostics" class="text-button">Clear</button>
           </div>
@@ -238,6 +247,6 @@
     </section>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app-v11.js"></script>
 </body>
 </html>

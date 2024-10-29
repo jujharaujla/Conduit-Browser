@@ -1,17 +1,17 @@
-# Relay Browser 0.10
+# Relay Browser 0.11
 
-Relay opens one to four isolated Electron browser screens with guarded synchronization, enforced ad and tracker protection, diagnostics, and optional private routed connections.
+Relay opens one to four isolated Electron browser screens with Screen 1 as the controller, optional ad blocking, concise status diagnostics, guarded synchronization, and optional private routed connections.
 
-## What changed in 0.10
+## What changed in 0.11
 
-- Added enforced ad and tracker blocking to every Electron browser session.
-- The blocker cannot be disabled from the interface.
-- Settings now includes a live diagnostics console for connection checks, failures, resets, synchronization warnings, and protection statistics.
-- Every setup, restart, and screen-reset workflow now displays a smooth 0–100% progress bar alongside its individual steps.
-- Replaced the confusing **Tor split** interface label with **Multiple private connections**.
-- The interface still explains that these private routes are powered by a local Tor service and are not separate commercial VPN subscriptions.
-- The toolbar shows the current number of blocked requests.
-- The locked setup, full restart, individual-screen resets, bounded bridge, and remote-DNS behavior from 0.9 remain included.
+- Screen 1 is now the authoritative controller for clicks, typing, navigation, and scroll position.
+- Follower screens automatically catch up when one remains on the previous page or at the wrong scroll position.
+- Security-challenge detection remains active for safety, but challenge warnings no longer appear in the toolbar or Settings console.
+- A challenged screen is silently skipped instead of freezing synchronization for every screen.
+- The Settings console now keeps only a short list of human-readable states such as **Connecting**, **Connected**, **Ready**, and **Connection error**.
+- Ad and tracker protection can now be disabled from Settings.
+- Turning protection off shows a compatibility warning because some websites may refresh, interrupt the page, or sign the user out.
+- Individual screen reset, Restart everything, visible progress, private connections, and the bounded Tor bridge remain included.
 
 ## Install on macOS
 
@@ -25,33 +25,25 @@ npm start
 
 You can also double-click `Start Relay.command` after dependencies have been installed.
 
-## Main controls
+## Screen 1 control
 
-- **Settings:** opens every Relay option, the progress display, protection status, live diagnostics, and individual-screen resets.
-- **Restart everything:** clears and rebuilds all browser sessions and the active connection mode.
-- **Reset Screen:** clears one screen's cookies, cache, storage, connections, DNS state, and private-route identity without clearing the other sessions.
+When **Screen 1 controls followers** is enabled, Relay mirrors supported activity from Screen 1 to Screens 2–4. It also sends an authoritative page URL and proportional scroll position so follower screens can recover after delayed loads or route mismatches.
 
-Browser panes remain hidden until a settings, reset, or restart operation is finalized.
+CAPTCHA and security-challenge interfaces are never mirrored. Password fields, file uploads, payments, purchases, votes, account deletion, and similar sensitive actions are also excluded.
 
-## Enforced protection
+## Ad and tracker protection
 
-Relay installs a request blocker on every Electron `Session`. It blocks known advertising hosts and common advertising request paths before the request is sent. The Settings console and toolbar show the cumulative blocked-request count.
+Protection starts enabled. Settings shows the blocked-request count and includes a switch to turn protection off for websites that reject blockers. The filter is session-level and applies to new requests immediately.
 
-This is a built-in network filter rather than a browser extension. It should remove many common advertising and tracking requests, but no static block list can guarantee that every advertisement on every website will be removed.
+This is a built-in network filter rather than a browser extension. It blocks many common advertising and tracking requests, but cannot guarantee that every advertisement will be removed.
 
 ## Multiple private connections
 
-Relay deliberately does not start the private routing service itself. Install and start Tor before applying **Multiple private connections**:
+Relay does not start the private routing service itself. Install and start Tor before applying **Multiple private connections**:
 
 ```bash
 brew install tor
 brew services start tor
 ```
 
-Alternatively, open Tor Browser and leave it running. Relay checks local SOCKS ports 9050 and 9150.
-
-Separate SOCKS identities create isolated Tor streams, but Tor can still choose the same exit relay for multiple screens. Enable **Verify public connections** in Settings as the source of truth.
-
-## Synchronization safety
-
-Synchronization pauses for CAPTCHAs and security challenges. Password fields, file uploads, payments, purchases, votes, account deletion, and similar sensitive actions are not mirrored.
+Alternatively, open Tor Browser and leave it running. Relay checks local SOCKS ports 9050 and 9150. Separate identities do not guarantee different exit IP addresses, so use **Verify public connections** as the source of truth.
