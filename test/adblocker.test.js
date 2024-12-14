@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { shouldBlock } = require('../src/adblocker');
+const { setEnabled, shouldBlock, snapshot } = require('../src/adblocker');
 
 function request(url, resourceType = 'script') {
   return { url, resourceType };
@@ -21,4 +21,10 @@ test('blocks common ad request paths', () => {
 test('does not block ordinary navigation or assets', () => {
   assert.equal(shouldBlock(request('https://example.com/', 'mainFrame')), false);
   assert.equal(shouldBlock(request('https://example.com/assets/application.js')), false);
+});
+
+test('protection can be enabled and disabled', () => {
+  assert.equal(setEnabled(false).enabled, false);
+  assert.equal(snapshot().enabled, false);
+  assert.equal(setEnabled(true).enabled, true);
 });

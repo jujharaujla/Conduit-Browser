@@ -58,6 +58,7 @@ const BLOCKED_RESOURCE_TYPES = new Set([
 
 const installedSessions = new WeakSet();
 const statistics = new Map();
+let enabled = true;
 
 function hostnameMatches(hostname) {
   const normalized = String(hostname || '').toLowerCase().replace(/^www\./, '');
@@ -81,16 +82,21 @@ function shouldBlock(details) {
   return BLOCKED_URL_PATTERNS.some((pattern) => pattern.test(searchable));
 }
 
+function setEnabled(value) {
+  enabled = Boolean(value);
+  return snapshot();
+}
+
 function snapshot() {
   const sessions = Array.from(statistics.values()).map((entry) => ({ ...entry }));
   return {
-    enforced: true,
+    enabled,
     totalBlocked: sessions.reduce((sum, entry) => sum + entry.blocked, 0),
     sessions,
   };
 }
 
-function installSessionAdBlocker(ses, label = 'browser', onDiagnostic = () => {}) {
+function installSessionAdBlocker(ses, label = 'browser') {
   if (!ses || installedSessions.has(ses)) return;
   installedSessions.add(ses);
 
@@ -102,7 +108,7 @@ function installSessionAdBlocker(ses, label = 'browser', onDiagnostic = () => {}
   statistics.set(label, entry);
 
   ses.webRequest.onBeforeRequest({ urls: ['<all_urls>'] }, (details, callback) => {
-    const blocked = shouldBlock(details);
+    const blocked = enabled && shouldBlock(details);
 
     if (blocked) {
       entry.blocked += 1;
@@ -111,26 +117,15 @@ function installSessionAdBlocker(ses, label = 'browser', onDiagnostic = () => {}
       } catch {
         entry.lastBlockedHost = 'unknown';
       }
-
-      if (entry.blocked === 1 || entry.blocked % 50 === 0) {
-        onDiagnostic({
-          level: 'success',
-          message: `${label}: blocked ${entry.blocked} ad or tracker request${entry.blocked === 1 ? '' : 's'}`,
-        });
-      }
     }
 
     callback({ cancel: blocked });
-  });
-
-  onDiagnostic({
-    level: 'success',
-    message: `${label}: enforced ad and tracker protection enabled`,
   });
 }
 
 module.exports = {
   installSessionAdBlocker,
+  setEnabled,
   shouldBlock,
   snapshot,
 };
