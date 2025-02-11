@@ -6,10 +6,15 @@
   <title>Relay</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="styles-v11.css" />
+  <link rel="stylesheet" href="styles-v13.css" />
 </head>
 <body>
   <header class="toolbar">
     <div class="nav-row">
+      <div class="relay-brand" aria-label="Relay multi-session browser">
+        <strong>RELAY</strong>
+        <small>Multi-session browser</small>
+      </div>
       <div class="nav-buttons">
         <button id="back" title="Back" aria-label="Back">←</button>
         <button id="forward" title="Forward" aria-label="Forward">→</button>
@@ -18,7 +23,7 @@
       <form id="address-form">
         <input id="address" value="relay://welcome" autocomplete="off" spellcheck="false" aria-label="Address or search" />
       </form>
-      <button id="restart-all" class="restart-button" title="Clear and rebuild every screen">Restart everything</button>
+      <button id="restart-all" class="restart-button" title="Clear and rebuild every screen">Restart all</button>
       <button id="open-settings" class="settings-button" title="Open Relay settings">Settings</button>
     </div>
 
@@ -47,9 +52,9 @@
     <section id="setup-dialog" class="setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title">
       <header class="setup-header">
         <div>
-          <p id="setup-eyebrow" class="eyebrow">Relay 0.11</p>
+          <p id="setup-eyebrow" class="eyebrow">Relay 0.13 / Configuration</p>
           <h1 id="setup-title">Workspace settings</h1>
-          <p id="setup-intro" class="setup-intro">Screen 1 leads the workspace. Changes are finalized behind this locked screen before browser access returns.</p>
+          <p id="setup-intro" class="setup-intro">Screen 1 leads the workspace. Relay finishes each change before browser access returns.</p>
         </div>
         <button id="setup-cancel" class="icon-close" aria-label="Close settings" hidden>×</button>
       </header>
@@ -191,7 +196,7 @@
         <aside id="setup-progress-panel" class="setup-progress-panel">
           <div class="panel-heading">
             <div>
-              <p id="progress-eyebrow" class="eyebrow">Progress</p>
+              <p id="progress-eyebrow" class="eyebrow">Operation</p>
               <h2 id="progress-title">Ready</h2>
             </div>
             <span id="diagnostic-issue-count" class="issue-count">All good</span>
@@ -248,5 +253,6 @@
   </div>
 
   <script src="app-v11.js"></script>
+  <script src="ui-v13.js"></script>
 </body>
 </html>
