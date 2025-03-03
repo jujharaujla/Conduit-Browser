@@ -7,6 +7,7 @@ const forward = document.querySelector('#forward');
 const reload = document.querySelector('#reload');
 const restartAll = document.querySelector('#restart-all');
 const openSettings = document.querySelector('#open-settings');
+const openConsole = document.querySelector('#open-console');
 const status = document.querySelector('#status');
 const statusDot = document.querySelector('#status-dot');
 const dnsStatus = document.querySelector('#dns-status');
@@ -15,7 +16,6 @@ const summaryScreens = document.querySelector('#summary-screens');
 const summaryZoom = document.querySelector('#summary-zoom');
 const summaryNetwork = document.querySelector('#summary-network');
 const summarySync = document.querySelector('#summary-sync');
-const summaryProtection = document.querySelector('#summary-protection');
 
 const setupBackdrop = document.querySelector('#setup-backdrop');
 const setupDialog = document.querySelector('#setup-dialog');
@@ -31,23 +31,23 @@ const setupTitle = document.querySelector('#setup-title');
 const setupIntro = document.querySelector('#setup-intro');
 const progressEyebrow = document.querySelector('#progress-eyebrow');
 const progressTitle = document.querySelector('#progress-title');
-const progressMeterFill = document.querySelector('#progress-meter-fill');
+const progressBar = document.querySelector('#progress-bar');
 const progressPercent = document.querySelector('#progress-percent');
-const progressCurrent = document.querySelector('#progress-current');
-const diagnosticConsole = document.querySelector('#diagnostic-console');
-const diagnosticIssueCount = document.querySelector('#diagnostic-issue-count');
-const clearDiagnostics = document.querySelector('#clear-diagnostics');
-const protectionDetail = document.querySelector('#protection-detail');
 const setupScreenCount = document.querySelector('#setup-screen-count');
 const setupZoom = document.querySelector('#setup-zoom');
+const setupEnforceRoute = document.querySelector('#setup-enforce-route');
 const setupCheckIPs = document.querySelector('#setup-check-ips');
 const setupSync = document.querySelector('#setup-sync');
+const connectionConsoleSection = document.querySelector('#connection-console-section');
+const connectionConsole = document.querySelector('#connection-console');
+const clearConsole = document.querySelector('#clear-console');
 const resetScreenButtons = Array.from(document.querySelectorAll('.screen-reset-button'));
 const progressSteps = [0, 1, 2, 3].map((index) => document.querySelector(`#progress-step-${index}`));
 
 const setupControls = [
   setupScreenCount,
   setupZoom,
+  setupEnforceRoute,
   setupCheckIPs,
   setupSync,
   ...Array.from(document.querySelectorAll('input[name="setup-network"]')),
@@ -57,7 +57,7 @@ const setupControls = [
 const SETTINGS_STEPS = [
   'Workspace layout and zoom',
   'Connection and DNS route',
-  'Public-connection verification',
+  'Public-route verification',
   'Synchronization preference',
 ];
 
@@ -67,13 +67,12 @@ let setupBusy = false;
 let hasOpenedWorkspace = false;
 let dialogMode = 'settings';
 let pendingRecovery = null;
-let diagnosticEntries = [];
-let issueCount = 0;
-let lastStatusMessage = '';
-let lastDnsMessage = '';
-let lastBlockedTotal = -1;
-let operationName = '';
-const stepSignatures = new Map();
+let enforcePrivateRoute = localStorage.getItem('relay.enforcePrivateRoute') === 'true';
+let routeMonitorTimer = null;
+let routeCheckInFlight = false;
+let routeFailureLocking = false;
+let consoleEntries = [];
+let lastStateLogKey = '';
 
 function timestamp() {
   return new Date().toLocaleTimeString('en-CA', {
@@ -84,65 +83,31 @@ function timestamp() {
   });
 }
 
-function friendlyText(value) {
+function appendLog(level, message) {
+  const clean = String(message || '').trim();
+  if (!clean) return;
+  consoleEntries.push({ time: timestamp(), level: level || 'info', message: clean });
+  if (consoleEntries.length > 300) consoleEntries = consoleEntries.slice(-300);
+
+  const row = document.createElement('div');
+  row.className = `console-line ${level || 'info'}`;
+  const time = document.createElement('time');
+  time.textContent = consoleEntries.at(-1).time;
+  const text = document.createElement('span');
+  text.textContent = clean;
+  row.append(time, text);
+  connectionConsole.appendChild(row);
+
+  while (connectionConsole.children.length > 300) connectionConsole.firstElementChild?.remove();
+  connectionConsole.scrollTop = connectionConsole.scrollHeight;
+}
+
+function friendlyStatus(value) {
   return String(value || '')
-    .replace(/Tor split/gi, 'Multiple private connections')
-    .replace(/Tor connected/gi, 'Private connections active')
-    .replace(/Tor route/gi, 'Private route')
-    .replace(/Tor was unavailable/gi, 'Private connections were unavailable')
-    .replace(/Tor reused an exit IP/gi, 'Private connections share an exit address');
-}
-
-function renderDiagnostics() {
-  diagnosticConsole.replaceChildren();
-  const fragment = document.createDocumentFragment();
-
-  for (const entry of diagnosticEntries) {
-    const row = document.createElement('div');
-    row.className = `diagnostic-entry ${entry.level}`;
-
-    const time = document.createElement('time');
-    time.textContent = entry.time;
-
-    const message = document.createElement('span');
-    message.textContent = entry.message;
-
-    row.append(time, message);
-    fragment.appendChild(row);
-  }
-
-  diagnosticConsole.appendChild(fragment);
-  diagnosticConsole.scrollTop = diagnosticConsole.scrollHeight;
-  diagnosticIssueCount.textContent = issueCount === 0
-    ? 'No issues'
-    : `${issueCount} issue${issueCount === 1 ? '' : 's'}`;
-  diagnosticIssueCount.classList.toggle('has-issues', issueCount > 0);
-}
-
-function addDiagnostic(level, message, suppliedTime = '') {
-  const normalizedLevel = ['success', 'warn', 'error'].includes(level) ? level : 'info';
-  diagnosticEntries.push({
-    time: suppliedTime || timestamp(),
-    level: normalizedLevel,
-    message: friendlyText(message),
-  });
-  if (diagnosticEntries.length > 300) diagnosticEntries = diagnosticEntries.slice(-300);
-  if (normalizedLevel === 'warn' || normalizedLevel === 'error') issueCount += 1;
-  renderDiagnostics();
-}
-
-function clearDiagnosticLog() {
-  diagnosticEntries = [];
-  issueCount = 0;
-  addDiagnostic('info', 'Diagnostics console cleared.');
-}
-
-function setProgress(value, message = '') {
-  const percent = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-  progressMeterFill.style.width = `${percent}%`;
-  progressPercent.textContent = `${percent}%`;
-  if (message) progressCurrent.textContent = friendlyText(message);
-  progressMeterFill.classList.toggle('complete', percent === 100);
+    .replace(/Tor split/gi, 'Multiple private routes')
+    .replace(/Tor connected/gi, 'Private routes connected')
+    .replace(/Tor was unavailable/gi, 'Private routes unavailable')
+    .replace(/Tor reused an exit IP/gi, 'Private routes reused an exit');
 }
 
 function renderLabels() {
@@ -156,10 +121,10 @@ function renderLabels() {
     label.style.height = `${item.height}px`;
 
     const result = latestState?.ips?.[item.index];
-    const ip = result
+    const routeText = result
       ? ` · ${result.ip}${result.isTor === false && latestState.networkMode === 'tor' ? ' · route unverified' : ''}`
       : '';
-    label.textContent = `Screen ${item.index + 1}${ip}`;
+    label.textContent = `Screen ${item.index + 1}${routeText}`;
     labels.appendChild(label);
   });
 }
@@ -169,8 +134,8 @@ function renderSummary() {
   summaryScreens.textContent = `${latestState.screenCount} screen${latestState.screenCount === 1 ? '' : 's'}`;
   summaryZoom.textContent = `${Math.round(latestState.zoomFactor * 100)}% zoom`;
   summaryNetwork.textContent = latestState.networkMode === 'tor'
-    ? 'Multiple private connections'
-    : 'Direct connection';
+    ? (enforcePrivateRoute ? 'Private routes required' : 'Multiple private routes')
+    : 'Direct';
   summarySync.textContent = latestState.syncRequested ? 'Sync on' : 'Sync off';
 
   resetScreenButtons.forEach((button) => {
@@ -178,27 +143,6 @@ function renderSummary() {
     button.disabled = setupBusy || screenNumber > latestState.screenCount;
     button.classList.toggle('unavailable', screenNumber > latestState.screenCount);
   });
-}
-
-async function refreshAdBlockStatus({ logChange = false } = {}) {
-  try {
-    const protection = await window.relay.getAdBlockStatus();
-    const total = Number(protection?.totalBlocked) || 0;
-    summaryProtection.textContent = `Protection on · ${total} blocked`;
-    protectionDetail.textContent = `${total} ad or tracker request${total === 1 ? '' : 's'} blocked across Relay sessions.`;
-
-    if (logChange && total !== lastBlockedTotal) {
-      if (lastBlockedTotal < 0) {
-        addDiagnostic('success', `Enforced ad and tracker protection is active. ${total} requests blocked so far.`);
-      } else if (total > lastBlockedTotal) {
-        addDiagnostic('success', `Protection blocked ${total - lastBlockedTotal} additional request${total - lastBlockedTotal === 1 ? '' : 's'} (${total} total).`);
-      }
-    }
-    lastBlockedTotal = total;
-  } catch (error) {
-    protectionDetail.textContent = 'Protection is enabled, but its counter is unavailable.';
-    if (logChange) addDiagnostic('warn', `Could not read protection statistics: ${error.message}`);
-  }
 }
 
 function selectedSetupNetwork() {
@@ -210,45 +154,61 @@ function chooseSetupNetwork(value) {
   if (input) input.checked = true;
 }
 
+function updateProgressMeter() {
+  let units = 0;
+  let hasError = false;
+  progressSteps.forEach((element) => {
+    if (element.classList.contains('done') || element.classList.contains('skipped')) units += 1;
+    else if (element.classList.contains('running')) units += 0.45;
+    else if (element.classList.contains('error')) {
+      units += 0.75;
+      hasError = true;
+    }
+  });
+  const percent = Math.max(0, Math.min(100, Math.round((units / progressSteps.length) * 100)));
+  progressBar.style.width = `${percent}%`;
+  progressBar.classList.toggle('error', hasError);
+  progressPercent.textContent = `${percent}%`;
+}
+
 function configureProgress(stepLabels, title, eyebrow = 'Operation progress') {
   progressEyebrow.textContent = eyebrow;
   progressTitle.textContent = title;
-  stepSignatures.clear();
   progressSteps.forEach((element, index) => {
     element.className = 'progress-step';
     element.querySelector('.step-icon').textContent = String(index + 1);
     element.querySelector('strong').textContent = stepLabels[index] || `Step ${index + 1}`;
     element.querySelector('small').textContent = 'Waiting';
   });
-  setProgress(0, 'Waiting for the operation to begin');
+  updateProgressMeter();
 }
 
-function setStep(index, state, message) {
+function setStep(index, state, message, { log = true } = {}) {
   const element = progressSteps[index];
   if (!element) return;
-
-  const cleanMessage = friendlyText(message);
   element.className = `progress-step ${state}`;
-  element.querySelector('small').textContent = cleanMessage;
+  element.querySelector('small').textContent = message;
   const icon = element.querySelector('.step-icon');
   if (state === 'done') icon.textContent = '✓';
   else if (state === 'error') icon.textContent = '!';
   else if (state === 'skipped') icon.textContent = '–';
   else icon.textContent = String(index + 1);
+  updateProgressMeter();
 
-  const percent = state === 'done' || state === 'skipped'
-    ? (index + 1) * 25
-    : state === 'running'
-      ? (index * 25) + 10
-      : index * 25;
-  setProgress(percent, cleanMessage);
-
-  const signature = `${state}:${cleanMessage}`;
-  if (stepSignatures.get(index) !== signature) {
-    stepSignatures.set(index, signature);
-    const level = state === 'error' ? 'error' : state === 'done' ? 'success' : state === 'skipped' ? 'info' : 'info';
-    addDiagnostic(level, `${operationName || 'Operation'} · ${element.querySelector('strong').textContent}: ${cleanMessage}`);
+  if (log && ['running', 'done', 'error'].includes(state)) {
+    const label = element.querySelector('strong').textContent;
+    appendLog(state === 'error' ? 'error' : state === 'done' ? 'success' : 'info', `${label}: ${message}`);
   }
+}
+
+function finishProgress() {
+  progressSteps.forEach((element, index) => {
+    if (!element.classList.contains('done') && !element.classList.contains('skipped')) {
+      setStep(index, 'done', 'Complete', { log: false });
+    }
+  });
+  progressBar.style.width = '100%';
+  progressPercent.textContent = '100%';
 }
 
 function clearError() {
@@ -260,13 +220,13 @@ function clearError() {
 }
 
 function showError(message, { allowDirect = false, recovery = null } = {}) {
-  const cleanMessage = friendlyText(message || 'The operation could not be completed.');
+  const clean = String(message || 'The operation could not be completed.');
   setupError.hidden = false;
-  setupError.textContent = cleanMessage;
+  setupError.textContent = clean;
   setupBack.hidden = false;
-  continueDirect.hidden = !allowDirect;
+  continueDirect.hidden = !allowDirect || enforcePrivateRoute;
   pendingRecovery = recovery;
-  addDiagnostic('error', cleanMessage);
+  appendLog('error', clean);
 }
 
 function setSetupBusy(busy) {
@@ -278,29 +238,27 @@ function setSetupBusy(busy) {
   continueDirect.disabled = busy;
   restartAll.disabled = busy;
   openSettings.disabled = busy;
+  openConsole.disabled = busy;
   renderSummary();
 }
 
 function setSettingsMode() {
   dialogMode = 'settings';
-  operationName = 'Settings';
   setupDialog.classList.remove('operation-mode');
   setupContent.classList.remove('operation-only');
   setupOptions.hidden = false;
-  setupEyebrow.textContent = 'Relay 0.10';
+  setupEyebrow.textContent = 'Relay 1.0';
   setupTitle.textContent = 'Workspace settings';
-  setupIntro.textContent = 'Every option is shown here. Applying changes locks the browser panes and displays visible progress until the complete configuration is finalized.';
+  setupIntro.textContent = 'All Relay settings and diagnostics are shown here. Applying changes locks the workspace until every step is finalized.';
   setupLaunch.hidden = false;
   setupLaunch.textContent = 'Apply settings';
   setupCancel.hidden = !hasOpenedWorkspace;
   clearError();
-  configureProgress(SETTINGS_STEPS, 'Ready to apply', 'Diagnostics and progress');
-  progressCurrent.textContent = 'Review settings, diagnostics, and protection status';
+  configureProgress(SETTINGS_STEPS, 'Waiting to apply', 'Setup progress');
 }
 
-function setOperationMode({ title, intro, progressTitleText, steps, name }) {
+function setOperationMode({ title, intro, progressTitleText, steps }) {
   dialogMode = 'operation';
-  operationName = name || title;
   setupDialog.classList.add('operation-mode');
   setupContent.classList.add('operation-only');
   setupOptions.hidden = true;
@@ -318,7 +276,8 @@ function copyStateIntoSetup() {
   setupScreenCount.value = String(latestState.screenCount);
   setupZoom.value = String(latestState.zoomFactor);
   setupSync.checked = Boolean(latestState.syncRequested);
-  chooseSetupNetwork(latestState.networkMode);
+  setupEnforceRoute.checked = enforcePrivateRoute;
+  chooseSetupNetwork(enforcePrivateRoute ? 'tor' : latestState.networkMode);
   renderSummary();
 }
 
@@ -328,14 +287,19 @@ async function showBackdrop() {
   return result?.ok !== false;
 }
 
-async function showSettings(errorMessage = '') {
+async function showSettings(errorMessage = '', focusConsole = false) {
   if (setupBusy) return;
   copyStateIntoSetup();
   setSettingsMode();
   if (errorMessage) showError(errorMessage);
   await showBackdrop();
-  addDiagnostic('info', 'Settings opened. Browser panes are locked while this window is visible.');
-  await refreshAdBlockStatus({ logChange: true });
+  if (focusConsole) {
+    requestAnimationFrame(() => {
+      connectionConsoleSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      connectionConsoleSection.classList.add('console-highlight');
+      setTimeout(() => connectionConsoleSection.classList.remove('console-highlight'), 1200);
+    });
+  }
 }
 
 async function hideSetup() {
@@ -347,7 +311,6 @@ async function hideSetup() {
   }
   setupBackdrop.classList.add('hidden');
   hasOpenedWorkspace = true;
-  addDiagnostic('success', 'Workspace unlocked.');
   return true;
 }
 
@@ -355,13 +318,12 @@ async function beginOperation(config) {
   setOperationMode(config);
   await showBackdrop();
   setSetupBusy(true);
-  addDiagnostic('info', `${config.name || config.title} started. Workspace access is locked.`);
+  appendLog('info', config.title);
 }
 
 async function completeOperation() {
-  setProgress(100, 'Final checks complete');
-  addDiagnostic('success', `${operationName} completed successfully.`);
-  await refreshAdBlockStatus({ logChange: true });
+  finishProgress();
+  appendLog('success', 'Operation finalized. Workspace access restored.');
   await new Promise((resolve) => setTimeout(resolve, 420));
   setSetupBusy(false);
   await hideSetup();
@@ -372,19 +334,29 @@ async function failOperation(message, options = {}) {
   showError(message, options);
 }
 
+function privateRouteVerified(result) {
+  const expected = latestState?.screenCount || 1;
+  return Boolean(
+    result?.ok &&
+    Array.isArray(result.results) &&
+    result.results.length >= expected &&
+    result.results.slice(0, expected).every((entry) => entry?.ok && entry?.isTor === true)
+  );
+}
+
 async function runSettings(forceDirect = false) {
   if (setupBusy) return;
 
   const chosenScreens = Number(setupScreenCount.value);
   const chosenZoom = Number(setupZoom.value);
-  const chosenNetwork = forceDirect ? 'direct' : selectedSetupNetwork();
-  const shouldCheckIPs = setupCheckIPs.checked;
+  const requirePrivate = Boolean(setupEnforceRoute.checked);
+  const chosenNetwork = requirePrivate ? 'tor' : (forceDirect ? 'direct' : selectedSetupNetwork());
+  const shouldCheckRoutes = setupCheckIPs.checked || requirePrivate;
   const shouldSync = setupSync.checked;
 
   await beginOperation({
-    name: 'Settings update',
     title: 'Applying workspace settings',
-    intro: 'Relay has hidden every browser pane. Access returns only after layout, connection, verification, and synchronization settings finish.',
+    intro: 'Relay has hidden every browser pane. Access returns only after layout, connection routing, route verification, and synchronization settings finish.',
     progressTitleText: 'Finalizing settings',
     steps: SETTINGS_STEPS,
   });
@@ -398,37 +370,49 @@ async function runSettings(forceDirect = false) {
     setStep(0, 'done', `${chosenScreens} screen${chosenScreens === 1 ? '' : 's'} · ${Math.round(chosenZoom * 100)}%`);
 
     setStep(1, 'running', chosenNetwork === 'tor'
-      ? 'Connecting each screen to a private routed identity…'
+      ? 'Connecting every screen to the local private-route provider…'
       : 'Applying the Direct connection…');
     const networkResult = await window.relay.setNetwork(chosenNetwork);
     if (!networkResult?.ok) {
-      setStep(1, 'error', 'The private connection service was unavailable');
-      await failOperation(networkResult?.error || 'Relay could not connect to the local private routing service.', {
-        allowDirect: true,
+      setStep(1, 'error', 'The requested private-route provider was unavailable');
+      await failOperation(networkResult?.error || 'Relay could not connect to the local private-route provider.', {
+        allowDirect: !requirePrivate,
         recovery: 'settings',
       });
       return;
     }
     setStep(1, 'done', chosenNetwork === 'tor'
-      ? 'Multiple private connections and remote DNS are ready'
+      ? 'Multiple private routes and remote DNS are ready'
       : 'Direct connection ready');
 
-    if (shouldCheckIPs) {
-      setStep(2, 'running', 'Checking every visible screen connection…');
-      const ipResult = await window.relay.checkIPs();
-      setStep(2, 'done', ipResult?.duplicate
-        ? 'Checked · at least two screens share an exit address'
-        : ipResult?.ok
-          ? 'All visible screen connections verified'
+    if (shouldCheckRoutes) {
+      setStep(2, 'running', 'Verifying the public route for every visible screen…');
+      const routeResult = await window.relay.checkIPs();
+      if (requirePrivate && !privateRouteVerified(routeResult)) {
+        setStep(2, 'error', 'At least one screen could not verify its private route');
+        await failOperation('Private-route enforcement is enabled, so Relay will remain locked until every visible screen verifies the private provider.', {
+          recovery: 'settings',
+        });
+        return;
+      }
+      setStep(2, 'done', routeResult?.duplicate
+        ? 'Verified · the provider reused one public exit'
+        : routeResult?.ok
+          ? 'All visible screens verified'
           : 'Finished with one or more unavailable results');
     } else {
-      setStep(2, 'skipped', 'Skipped by preference');
+      setStep(2, 'skipped', 'Skipped');
     }
 
     setStep(3, 'running', 'Applying the synchronization preference…');
     await window.relay.setSync(shouldSync);
     setStep(3, 'done', shouldSync ? 'Synchronization enabled' : 'Synchronization disabled');
 
+    enforcePrivateRoute = requirePrivate;
+    localStorage.setItem('relay.enforcePrivateRoute', String(enforcePrivateRoute));
+    appendLog('success', enforcePrivateRoute
+      ? 'Private-route kill switch enabled. Direct fallback is not allowed.'
+      : 'Private-route enforcement disabled.');
     await completeOperation();
   } catch (error) {
     await failOperation(error?.message || String(error), { recovery: 'settings' });
@@ -439,14 +423,13 @@ async function runRestartEverything() {
   if (setupBusy) return;
 
   await beginOperation({
-    name: 'Restart everything',
     title: 'Restarting everything',
-    intro: 'Relay is clearing every isolated browser session, rebuilding the current connection mode, and reloading all visible screens.',
+    intro: 'Relay is clearing every isolated browser session, rebuilding the current connection route, and reloading all visible screens.',
     progressTitleText: 'Restarting Relay',
     steps: [
       'Pause workspace',
       'Reset browser sessions',
-      'Rebuild connection mode',
+      'Rebuild connection routes',
       'Reload every screen',
     ],
   });
@@ -454,8 +437,23 @@ async function runRestartEverything() {
   try {
     const result = await window.relay.restartEverything();
     if (!result?.ok) {
-      await failOperation(result?.error || 'Relay restarted with a Direct-connection fallback.', { recovery: 'restart' });
+      await failOperation(result?.error || 'Relay restarted with a connection fallback.', {
+        recovery: 'restart',
+        allowDirect: !enforcePrivateRoute,
+      });
       return;
+    }
+
+    if (enforcePrivateRoute) {
+      setStep(3, 'running', 'Verifying enforced private routes after restart…');
+      const routeResult = await window.relay.checkIPs();
+      if (!privateRouteVerified(routeResult)) {
+        setStep(3, 'error', 'Private-route verification failed after restart');
+        await failOperation('Relay remains locked because the required private routes could not be verified after restart.', {
+          recovery: 'settings',
+        });
+        return;
+      }
     }
     await completeOperation();
   } catch (error) {
@@ -467,14 +465,13 @@ async function runScreenReset(screenNumber) {
   if (setupBusy) return;
 
   await beginOperation({
-    name: `Reset Screen ${screenNumber}`,
     title: `Resetting Screen ${screenNumber}`,
-    intro: `Only Screen ${screenNumber} is being cleared. Other sessions remain unchanged, but the whole workspace stays locked until the reset is finalized.`,
+    intro: `Only Screen ${screenNumber} is being cleared. Other screen sessions remain unchanged, but the entire workspace stays locked until the reset is finalized.`,
     progressTitleText: `Reset Screen ${screenNumber}`,
     steps: [
       `Isolate Screen ${screenNumber}`,
       'Clear browser data',
-      'Renew connection identity',
+      'Renew private-route identity',
       `Reload Screen ${screenNumber}`,
     ],
   });
@@ -485,10 +482,75 @@ async function runScreenReset(screenNumber) {
       await failOperation(result?.error || `Screen ${screenNumber} could not be fully reset.`, { recovery: 'screen' });
       return;
     }
+
+    if (enforcePrivateRoute) {
+      setStep(3, 'running', `Verifying Screen ${screenNumber} and all enforced routes…`);
+      const routeResult = await window.relay.checkIPs();
+      if (!privateRouteVerified(routeResult)) {
+        setStep(3, 'error', 'Private-route verification failed after screen reset');
+        await failOperation('Relay remains locked because one or more required private routes could not be verified after the screen reset.', {
+          recovery: 'settings',
+        });
+        return;
+      }
+    }
     await completeOperation();
   } catch (error) {
     await failOperation(error?.message || String(error), { recovery: 'screen' });
   }
+}
+
+async function lockForRouteFailure(message) {
+  if (routeFailureLocking || setupBusy || !hasOpenedWorkspace) return;
+  routeFailureLocking = true;
+  try {
+    await beginOperation({
+      title: 'Private route interrupted',
+      intro: 'The kill switch detected that one or more screens no longer verified the required private connection. Browser access is blocked until the route is restored.',
+      progressTitleText: 'Connection protection active',
+      steps: [
+        'Detect route interruption',
+        'Block workspace access',
+        'Verify private-route provider',
+        'Await reconnection',
+      ],
+    });
+    setStep(0, 'done', 'A private-route health check failed');
+    setStep(1, 'done', 'All browser panes are hidden and inaccessible');
+    setStep(2, 'error', message || 'The private-route provider could not be verified');
+    setStep(3, 'skipped', 'Open Settings and reconnect the provider');
+    await failOperation(message || 'Private-route enforcement blocked Relay because the required connection could not be verified.', {
+      recovery: 'settings',
+    });
+  } finally {
+    routeFailureLocking = false;
+  }
+}
+
+async function runRouteHealthCheck() {
+  if (!enforcePrivateRoute || routeCheckInFlight || setupBusy || !hasOpenedWorkspace) return;
+  if (!setupBackdrop.classList.contains('hidden')) return;
+  if (!latestState || latestState.networkMode !== 'tor') {
+    await lockForRouteFailure('Relay entered Direct mode while private-route enforcement was enabled.');
+    return;
+  }
+
+  routeCheckInFlight = true;
+  try {
+    const result = await window.relay.checkIPs();
+    if (!privateRouteVerified(result)) {
+      await lockForRouteFailure('One or more screens failed the private-route verification check.');
+    }
+  } catch (error) {
+    await lockForRouteFailure(error?.message || 'The background private-route health check failed.');
+  } finally {
+    routeCheckInFlight = false;
+  }
+}
+
+function startRouteMonitor() {
+  if (routeMonitorTimer) clearInterval(routeMonitorTimer);
+  routeMonitorTimer = setInterval(runRouteHealthCheck, 20000);
 }
 
 addressForm.addEventListener('submit', (event) => {
@@ -500,7 +562,7 @@ forward.addEventListener('click', () => window.relay.forward());
 reload.addEventListener('click', () => window.relay.reload());
 restartAll.addEventListener('click', runRestartEverything);
 openSettings.addEventListener('click', () => showSettings());
-clearDiagnostics.addEventListener('click', clearDiagnosticLog);
+openConsole.addEventListener('click', () => showSettings('', true));
 
 setupCancel.addEventListener('click', () => {
   if (hasOpenedWorkspace && !setupBusy && dialogMode === 'settings') hideSetup();
@@ -508,10 +570,31 @@ setupCancel.addEventListener('click', () => {
 setupBack.addEventListener('click', () => showSettings());
 setupLaunch.addEventListener('click', () => runSettings(false));
 continueDirect.addEventListener('click', () => {
-  if (pendingRecovery === 'settings') {
+  if (pendingRecovery === 'settings' && !enforcePrivateRoute && !setupEnforceRoute.checked) {
     chooseSetupNetwork('direct');
     runSettings(true);
   }
+});
+clearConsole.addEventListener('click', () => {
+  consoleEntries = [];
+  connectionConsole.replaceChildren();
+});
+
+setupEnforceRoute.addEventListener('change', () => {
+  if (setupEnforceRoute.checked) {
+    chooseSetupNetwork('tor');
+    setupCheckIPs.checked = true;
+    appendLog('info', 'Private-route enforcement selected. Route verification is now required.');
+  }
+});
+
+document.querySelectorAll('input[name="setup-network"]').forEach((input) => {
+  input.addEventListener('change', () => {
+    if (input.checked && input.value === 'direct' && setupEnforceRoute.checked) {
+      setupEnforceRoute.checked = false;
+      appendLog('warn', 'Private-route enforcement was disabled because Direct connection was selected.');
+    }
+  });
 });
 
 resetScreenButtons.forEach((button) => {
@@ -530,29 +613,27 @@ window.relay.onState((state) => {
   back.disabled = setupBusy || !state.canGoBack;
   forward.disabled = setupBusy || !state.canGoForward;
   reload.disabled = setupBusy;
-  status.textContent = friendlyText(state.status);
-  dnsStatus.textContent = friendlyText(state.dnsStatus);
+  status.textContent = friendlyStatus(state.status);
+  dnsStatus.textContent = friendlyStatus(state.dnsStatus);
 
   statusDot.className = 'status-dot';
   if (state.networkBusy || setupBusy) statusDot.classList.add('busy');
+  else if (enforcePrivateRoute && state.networkMode !== 'tor') statusDot.classList.add('warning');
   else if (state.syncRequested && !state.syncReady) statusDot.classList.add('warning');
   else if (state.networkMode === 'tor') statusDot.classList.add('secure');
 
-  const nextStatus = friendlyText(state.status);
-  const nextDns = friendlyText(state.dnsStatus);
-  if (lastStatusMessage && nextStatus !== lastStatusMessage) {
-    const level = /failed|unavailable|error|paused|stopped/i.test(nextStatus) ? 'warn' : 'info';
-    addDiagnostic(level, nextStatus);
+  const stateLogKey = `${state.status}|${state.dnsStatus}|${state.networkMode}`;
+  if (stateLogKey !== lastStateLogKey) {
+    lastStateLogKey = stateLogKey;
+    appendLog(state.networkMode === 'tor' ? 'success' : 'info', `${state.status} · ${state.dnsStatus}`);
   }
-  if (lastDnsMessage && nextDns !== lastDnsMessage) {
-    const level = /failed|incomplete|unavailable|restored after/i.test(nextDns) ? 'warn' : 'info';
-    addDiagnostic(level, nextDns);
-  }
-  lastStatusMessage = nextStatus;
-  lastDnsMessage = nextDns;
 
   renderSummary();
   renderLabels();
+
+  if (enforcePrivateRoute && hasOpenedWorkspace && !setupBusy && setupBackdrop.classList.contains('hidden') && state.networkMode !== 'tor') {
+    lockForRouteFailure('Relay entered Direct mode while private-route enforcement was enabled.');
+  }
 });
 
 window.relay.onLayout(({ labels: layout }) => {
@@ -561,19 +642,20 @@ window.relay.onLayout(({ labels: layout }) => {
 });
 
 window.relay.onOperationProgress((progress) => {
-  if (dialogMode !== 'operation') return;
-  setStep(Number(progress.step), progress.state || 'running', progress.message || 'Working…');
+  const step = Number(progress.step);
+  const state = progress.state || 'running';
+  const message = progress.message || 'Working…';
+  appendLog(state === 'error' ? 'error' : state === 'done' ? 'success' : 'info', message);
+  if (dialogMode === 'operation') setStep(step, state, message, { log: false });
 });
 
-window.relay.onDiagnostic((entry) => {
-  addDiagnostic(entry?.level || 'info', entry?.message || '', entry?.time || '');
-  refreshAdBlockStatus();
-});
-
-setInterval(() => refreshAdBlockStatus({ logChange: false }), 4000);
-
+appendLog('info', 'Relay diagnostic console initialized.');
+appendLog('info', 'Private routes use a local Tor SOCKS provider; the interface will report provider-specific failures here.');
 setSettingsMode();
-addDiagnostic('info', 'Relay diagnostics console initialized.');
-addDiagnostic('success', 'Workspace locking is enabled for settings, reset, and restart operations.');
-refreshAdBlockStatus({ logChange: true });
+setupEnforceRoute.checked = enforcePrivateRoute;
+if (enforcePrivateRoute) {
+  chooseSetupNetwork('tor');
+  setupCheckIPs.checked = true;
+}
 window.relay.setSetupVisible(true);
+startRouteMonitor();
