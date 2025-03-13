@@ -1,0 +1,156 @@
+.status-area {
+  grid-template-columns: 9px minmax(180px, 1fr) auto;
+}
+
+.status-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.console-button,
+.small-button {
+  height: 30px;
+  padding: 0 10px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.console-button {
+  border-color: #c7c6bf;
+  background: rgba(255, 255, 255, .78);
+}
+
+.provider-note {
+  margin-top: 12px;
+  padding: 12px 13px;
+  border: 1px solid #c9d3ca;
+  border-radius: 9px;
+  background: #f0f6f1;
+  color: #46594b;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.provider-note strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #2f4636;
+}
+
+.provider-note code {
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .055);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.compact-options.three-up {
+  grid-template-columns: 1fr;
+}
+
+.enforcement-card {
+  border-color: #c6b68f;
+  background: #fbf7eb;
+}
+
+.enforcement-card:has(input:checked) {
+  border-color: #9d792f;
+  background: #fff9e8;
+  box-shadow: 0 0 0 3px rgba(157, 121, 47, .08);
+}
+
+.progress-meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 4px;
+}
+
+.progress-meter-track {
+  height: 9px;
+  overflow: hidden;
+  border: 1px solid #c8c7c0;
+  border-radius: 999px;
+  background: #deddd7;
+}
+
+.progress-meter-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #347250;
+  transition: width 260ms ease;
+}
+
+.progress-meter-fill.error {
+  background: #a64532;
+}
+
+#progress-percent {
+  color: #5d5d57;
+  font: 700 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-align: right;
+}
+
+.connection-console-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #d2d1ca;
+  transition: box-shadow 180ms ease, background 180ms ease;
+}
+
+.connection-console-section.console-highlight {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .64);
+  box-shadow: 0 0 0 5px rgba(52, 114, 80, .12);
+}
+
+.console-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.console-heading h2 {
+  margin-bottom: 0;
+}
+
+.connection-console {
+  height: 180px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #3b3b38;
+  border-radius: 9px;
+  background: #1c1c1b;
+  color: #deded9;
+  font: 10.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.console-line {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 8px;
+  padding: 4px 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, .055);
+  overflow-wrap: anywhere;
+}
+
+.console-line time { color: #85857f; }
+.console-line.info span { color: #deded9; }
+.console-line.success span { color: #93d4aa; }
+.console-line.warn span { color: #efc27b; }
+.console-line.error span { color: #f29b8d; }
+
+.operation-only .connection-console {
+  height: 150px;
+}
+
+@media (max-width: 950px) {
+  .console-button { display: none; }
+  .connection-console { height: 150px; }
+}
