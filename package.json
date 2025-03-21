@@ -7,9 +7,12 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/core.js && node --check src/tor-manager.js && node --check src/tor-bridge.js && node --check src/preload.js && node --check src/page-preload.js && node --check src/renderer/app.js && npm test"
+    "check": "node --check src/main.js && node --check src/core.js && node --check src/tor-manager.js && node --check src/tor-bridge.js && node --check src/preload.js && node --check src/page-preload.js && node --check src/renderer/app.js && npm test",
+    "dist:mac": "electron-builder --mac dmg zip --config electron-builder.config.cjs",
+    "dist:win": "electron-builder --win nsis portable --config electron-builder.config.cjs"
   },
   "devDependencies": {
-    "electron": "^37.2.3"
+    "electron": "37.2.3",
+    "electron-builder": "26.15.3"
   }
 }
