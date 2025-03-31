@@ -1,26 +1,20 @@
-# Relay Browser 1.0
+# Conduit 0.18
 
-Relay opens one to four isolated Electron browser screens with guarded synchronization, optional private routing, locked settings workflows, and per-screen reset controls.
+Conduit is a one-to-eight-pane Electron browser for repeating ordinary browsing work across isolated sessions. Pane 1 can lead navigation, scrolling, typing, and clicks while followers keep separate cookies, storage, cache, and optional route identities.
 
-## What changed in 1.0
+## What changed
 
-- Replaced the user-facing **Tor split** label with **Multiple private routes**.
-- Kept the provider name visible in diagnostics: the current provider is a local Tor SOCKS service, not a conventional VPN.
-- Added **Require private routes**, an in-app kill switch that refuses to unlock the workspace until every visible screen verifies the private route.
-- Private-route enforcement automatically requires public-route verification.
-- When enforcement is active, Direct fallback is not allowed.
-- Added a background route health check. If verification fails, Relay hides every pane and opens the locked recovery screen.
-- Added **Open console** beside the top-right status information.
-- Added a live connection console for provider checks, route failures, status changes, resets, and restart progress.
-- Added a real progress bar driven by the four current operation stages.
-- Improved settings terminology for connections, routes, verification, and identity renewal.
-- Kept **Restart everything**, individual screen resets, the bounded SOCKS bridge, and remote-DNS routing.
-
-## What the kill switch covers
-
-The enforcement setting applies inside Relay. When Multiple private routes is active, each Electron session uses a fixed local proxy bridge and does not intentionally fall back to Direct mode. Relay also performs periodic verification and locks the interface when verification fails.
-
-This is not a system-wide macOS VPN kill switch and does not control traffic from other applications.
+- Replaced the layered versioned renderer with one HTML file, one stylesheet, and one renderer script.
+- Replaced the competing synchronization wrappers with one pane preload and one main-process coordinator.
+- Added a live pane map showing registered, aligned, loading, paused, and catching-up panes.
+- Added focus mode, per-pane pause/resume, reset, and editable pane names.
+- Added selective following controls for navigation, scrolling, typing, and clicks.
+- Added saved workspace presets and automatic restoration of pane count, zoom, labels, and previous URLs.
+- Added native macOS shortcuts and menus, a right-click pane menu, an About window, system Light/Dark appearance, and a Conduit dock icon.
+- Simplified the toolbar and Settings interface around one warm-gray and forest-green identity.
+- Removed decorative event hashes, multiple color-theme presets, numbered section tiles, and permanent diagnostic noise.
+- Kept the ad filter optional, with a compatibility warning.
+- Kept CAPTCHA, password, file-upload, payment, purchase, voting, and account-deletion actions outside synchronization.
 
 ## Install on macOS
 
@@ -32,36 +26,23 @@ npm run check
 npm start
 ```
 
-You can also double-click `Start Relay.command` after dependencies have been installed.
+After dependencies are installed, `Start Conduit.command` can also be used.
 
-## Main controls
+## Keyboard shortcuts
 
-- **Settings:** opens screen count, zoom, routing, route enforcement, verification, synchronization, diagnostics, and individual-screen reset controls.
-- **Open console:** opens Settings and scrolls directly to live connection diagnostics.
-- **Restart everything:** rebuilds all browser sessions and the active connection route.
-- **Reset Screen:** clears one screen's cookies, cache, storage, connections, DNS state, and private-route identity without clearing other sessions.
+- `⌘,` opens Settings.
+- `⌘L` focuses the address bar.
+- `⌘R` reloads the focused pane.
+- `⌘⇧R` reloads every visible pane.
+- `⌘1` through `⌘8` focus a pane.
+- `⌘⇧S` saves a workspace preset.
 
-Every settings, restart, and reset workflow uses a blocking progress screen. Browser panes remain hidden until the operation is finalized.
+## Pane following
 
-## Multiple private routes
+Pane 1 is the leader. Followers can be paused individually without closing their sessions. Settings can independently enable or disable navigation, scrolling, typing, and click following.
 
-Relay deliberately does not start its private-route provider. Install and start the Homebrew Tor service before applying Multiple private routes:
+Security-challenge pages are skipped. Sensitive fields and actions are not mirrored.
 
-```bash
-brew install tor
-brew services start tor
-```
+## Isolated routes
 
-Alternatively, open Tor Browser and leave it running. Relay checks local SOCKS ports 9050 and 9150.
-
-To stop the Homebrew service later:
-
-```bash
-brew services stop tor
-```
-
-Separate SOCKS identities create isolated Tor streams, but the provider can still choose the same public exit for multiple screens. The verification results shown in Relay are the source of truth.
-
-## Synchronization safety
-
-Synchronization pauses for CAPTCHAs and security challenges. Password fields, file uploads, payments, purchases, votes, account deletion, and similar sensitive actions are not mirrored.
+The isolated route option connects to a compatible local SOCKS service on port 9050 or 9150. Conduit does not launch that service itself. Route verification reports the public IP address visible to each active pane.
