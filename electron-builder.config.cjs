@@ -1,8 +1,8 @@
 'use strict';
 
 module.exports = {
-  appId: 'com.jujharaujla.relaybrowser',
-  productName: 'Relay Browser',
+  appId: 'com.jujharaujla.conduit',
+  productName: 'Conduit',
   directories: {
     output: 'dist',
   },
@@ -18,19 +18,19 @@ module.exports = {
     target: ['dmg', 'zip'],
   },
   dmg: {
-    title: 'Relay Browser ${version}',
+    title: 'Conduit ${version}',
     sign: false,
   },
   win: {
     target: ['nsis', 'portable'],
   },
   nsis: {
-    artifactName: 'Relay-Browser-${version}-windows-${arch}-setup.${ext}',
+    artifactName: 'Conduit-${version}-windows-${arch}-setup.${ext}',
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
   },
   portable: {
-    artifactName: 'Relay-Browser-${version}-windows-${arch}-portable.${ext}',
+    artifactName: 'Conduit-${version}-windows-${arch}-portable.${ext}',
   },
 };
