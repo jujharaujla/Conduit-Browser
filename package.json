@@ -1,13 +1,13 @@
 {
-  "name": "relay-browser",
-  "version": "1.0.0",
+  "name": "conduit-browser",
+  "version": "2.0.0",
   "private": true,
-  "description": "Multi-screen Electron browser with enforced private routing, live connection diagnostics, locked settings workflows, screen resets, and guarded synchronization.",
-  "main": "src/main.js",
+  "description": "A focused one-to-eight-pane Electron browser with one sync engine, pane topology, selective following, focus and pause controls, saved workspaces, session restore, and a restrained Mac utility interface.",
+  "main": "src/main-entry-v18.js",
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/core.js && node --check src/tor-manager.js && node --check src/tor-bridge.js && node --check src/preload.js && node --check src/page-preload.js && node --check src/renderer/app.js && npm test",
+    "check": "node --check src/main-entry-v18.js && node --check src/main-v18.js && node --check src/workspace-v18.js && node --check src/preload-v18.js && node --check src/page-preload-v18.js && node --check src/renderer/state-guard-v18.js && node --check src/renderer/app-v18.js && node --check src/adblocker.js && node --check src/core.js && node --check src/tor-manager.js && node --check src/tor-bridge.js && npm test",
     "dist:mac": "electron-builder --mac dmg zip --config electron-builder.config.cjs",
     "dist:win": "electron-builder --win nsis portable --config electron-builder.config.cjs"
   },
