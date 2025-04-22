@@ -3,7 +3,7 @@
 const TOOLBAR_HEIGHT = 106;
 const LABEL_HEIGHT = 26;
 const GAP = 2;
-const MAX_SCREENS = 4;
+const MAX_SCREENS = 8;
 const DEFAULT_URL = 'relay://welcome';
 
 function normalizeURL(value) {
@@ -23,31 +23,56 @@ function clampZoom(value) {
   return Math.min(1.5, Math.max(0.5, Number(value) || 1));
 }
 
+function distribute(total, parts, gap = GAP) {
+  const usable = Math.max(0, total - (gap * Math.max(0, parts - 1)));
+  const base = Math.floor(usable / parts);
+  const remainder = usable - (base * parts);
+  return Array.from({ length: parts }, (_unused, index) => base + (index < remainder ? 1 : 0));
+}
+
+function gridShape(count) {
+  if (count <= 1) return { columns: 1, rows: 1 };
+  if (count === 2) return { columns: 2, rows: 1 };
+  if (count <= 4) return { columns: 2, rows: 2 };
+  if (count <= 6) return { columns: 3, rows: 2 };
+  return { columns: 4, rows: 2 };
+}
+
 function layoutCells(countValue, widthValue, heightValue) {
   const count = clampScreenCount(countValue);
   const width = Math.max(0, Math.floor(widthValue));
   const height = Math.max(0, Math.floor(heightValue));
   const contentHeight = Math.max(0, height - TOOLBAR_HEIGHT);
+  const { columns, rows } = gridShape(count);
+  const columnWidths = distribute(width, columns);
+  const rowHeights = distribute(contentHeight, rows);
+  const columnOffsets = [];
+  const rowOffsets = [];
 
-  if (count === 1) return [{ x: 0, y: TOOLBAR_HEIGHT, width, height: contentHeight }];
-  if (count === 2) {
-    const left = Math.floor((width - GAP) / 2);
-    return [
-      { x: 0, y: TOOLBAR_HEIGHT, width: left, height: contentHeight },
-      { x: left + GAP, y: TOOLBAR_HEIGHT, width: width - left - GAP, height: contentHeight },
-    ];
+  let x = 0;
+  for (const columnWidth of columnWidths) {
+    columnOffsets.push(x);
+    x += columnWidth + GAP;
   }
 
-  const left = Math.floor((width - GAP) / 2);
-  const top = Math.floor((contentHeight - GAP) / 2);
-  const right = width - left - GAP;
-  const bottom = contentHeight - top - GAP;
-  return [
-    { x: 0, y: TOOLBAR_HEIGHT, width: left, height: top },
-    { x: left + GAP, y: TOOLBAR_HEIGHT, width: right, height: top },
-    { x: 0, y: TOOLBAR_HEIGHT + top + GAP, width: left, height: bottom },
-    { x: left + GAP, y: TOOLBAR_HEIGHT + top + GAP, width: right, height: bottom },
-  ].slice(0, count);
+  let y = TOOLBAR_HEIGHT;
+  for (const rowHeight of rowHeights) {
+    rowOffsets.push(y);
+    y += rowHeight + GAP;
+  }
+
+  const cells = [];
+  for (let index = 0; index < count; index += 1) {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    cells.push({
+      x: columnOffsets[column],
+      y: rowOffsets[row],
+      width: columnWidths[column],
+      height: rowHeights[row],
+    });
+  }
+  return cells;
 }
 
 function pageBounds(cell) {
