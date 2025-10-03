@@ -1,18 +1,50 @@
 {
   "name": "conduit-browser",
-  "version": "2.0.0",
+  "version": "3.1.0",
   "private": true,
-  "description": "A focused one-to-eight-pane Electron browser with one sync engine, pane topology, selective following, focus and pause controls, saved workspaces, session restore, and a restrained Mac utility interface.",
-  "main": "src/main-entry-v18.js",
+  "description": "A linked multi-screen Electron browser with isolated sessions and per-screen routing.",
+  "author": {
+    "name": "Jujhar Aujla",
+    "url": "https://github.com/jujharaujla"
+  },
+  "homepage": "https://github.com/jujharaujla/conduit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jujharaujla/conduit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jujharaujla/conduit/issues"
+  },
+  "license": "MIT",
+  "main": "src/main.js",
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
   "scripts": {
     "start": "electron .",
-    "test": "node --test",
-    "check": "node --check src/main-entry-v18.js && node --check src/main-v18.js && node --check src/workspace-v18.js && node --check src/preload-v18.js && node --check src/page-preload-v18.js && node --check src/renderer/state-guard-v18.js && node --check src/renderer/app-v18.js && node --check src/adblocker.js && node --check src/core.js && node --check src/tor-manager.js && node --check src/tor-bridge.js && npm test",
+    "dev": "electron .",
+    "lint": "eslint src --ext .js",
+    "check": "npm run lint",
+    "pack": "electron-builder --dir --config electron-builder.config.cjs",
+    "dist": "electron-builder --config electron-builder.config.cjs",
     "dist:mac": "electron-builder --mac dmg zip --config electron-builder.config.cjs",
-    "dist:win": "electron-builder --win nsis portable --config electron-builder.config.cjs"
+    "dist:win": "electron-builder --win nsis portable --config electron-builder.config.cjs",
+    "dist:linux": "electron-builder --linux AppImage --config electron-builder.config.cjs",
+    "release:dry": "electron-builder --publish never --config electron-builder.config.cjs"
   },
   "devDependencies": {
-    "electron": "37.2.3",
-    "electron-builder": "26.15.3"
-  }
+    "electron": "43.2.0",
+    "electron-builder": "26.15.3",
+    "eslint": "10.8.0",
+    "eslint-plugin-n": "18.2.2"
+  },
+  "keywords": [
+    "electron",
+    "browser",
+    "multi-session",
+    "browser-automation",
+    "testing",
+    "productivity"
+  ]
 }
