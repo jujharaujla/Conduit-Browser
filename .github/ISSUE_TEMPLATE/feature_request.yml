@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a focused, legitimate workflow improvement
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the authorized workflow, not only the proposed interface.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Privacy or safety considerations
+      description: Explain how session data, credentials, or third-party services could be affected.

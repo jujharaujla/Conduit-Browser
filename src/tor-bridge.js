@@ -119,24 +119,34 @@ function authPacket(username, password = '') {
   return Buffer.concat([Buffer.from([0x01, user.length]), user, Buffer.from([pass.length]), pass]);
 }
 
-async function connectThroughTor({ socksPort, host, port, username = '' }) {
-  const socket = net.connect({ host: '127.0.0.1', port: socksPort, allowHalfOpen: false });
+async function connectThroughSocks({
+  socksHost = '127.0.0.1',
+  socksPort,
+  host,
+  port,
+  username = '',
+  password = '',
+}) {
+  const socket = net.connect({ host: socksHost, port: socksPort, allowHalfOpen: false });
   socket.setNoDelay(true);
-  socket.setTimeout(30000, () => socket.destroy(new Error('Tor SOCKS connection timed out')));
+  socket.setTimeout(30000, () => socket.destroy(new Error('SOCKS5 connection timed out')));
 
   try {
     await once(socket, 'connect');
     const reader = new BufferedReader(socket);
-    socket.write(username ? Buffer.from([0x05, 0x02, 0x00, 0x02]) : Buffer.from([0x05, 0x01, 0x00]));
+    const hasCredentials = Boolean(username || password);
+    socket.write(hasCredentials
+      ? Buffer.from([0x05, 0x02, 0x00, 0x02])
+      : Buffer.from([0x05, 0x01, 0x00]));
     const method = await reader.read(2);
-    if (method[0] !== 0x05 || method[1] === 0xff) throw new Error('Tor SOCKS server rejected authentication methods');
+    if (method[0] !== 0x05 || method[1] === 0xff) throw new Error('SOCKS5 server rejected authentication methods');
 
     if (method[1] === 0x02) {
-      socket.write(authPacket(username));
+      socket.write(authPacket(username, password));
       const authReply = await reader.read(2);
-      if (authReply[0] !== 0x01 || authReply[1] !== 0x00) throw new Error('Tor SOCKS identity authentication failed');
+      if (authReply[0] !== 0x01 || authReply[1] !== 0x00) throw new Error('SOCKS5 authentication failed');
     } else if (method[1] !== 0x00) {
-      throw new Error(`Unsupported Tor SOCKS method ${method[1]}`);
+      throw new Error(`Unsupported SOCKS5 authentication method ${method[1]}`);
     }
 
     const address = addressPacket(host);
@@ -144,11 +154,11 @@ async function connectThroughTor({ socksPort, host, port, username = '' }) {
     socket.write(Buffer.concat([Buffer.from([0x05, 0x01, 0x00]), address, portBuffer]));
 
     const header = await reader.read(4);
-    if (header[0] !== 0x05 || header[1] !== 0x00) throw new Error(`Tor SOCKS connection failed with code ${header[1]}`);
+    if (header[0] !== 0x05 || header[1] !== 0x00) throw new Error(`SOCKS5 connection failed with code ${header[1]}`);
     if (header[3] === 0x01) await reader.read(4);
     else if (header[3] === 0x04) await reader.read(16);
     else if (header[3] === 0x03) await reader.read((await reader.read(1))[0]);
-    else throw new Error('Tor returned an unknown SOCKS address type');
+    else throw new Error('SOCKS5 returned an unknown address type');
     await reader.read(2);
 
     reader.release();
@@ -158,6 +168,10 @@ async function connectThroughTor({ socksPort, host, port, username = '' }) {
     if (!socket.destroyed) socket.destroy();
     throw error;
   }
+}
+
+function connectThroughTor(options) {
+  return connectThroughSocks({ ...options, socksHost: '127.0.0.1' });
 }
 
 function parseAuthority(value, fallbackPort) {
@@ -189,7 +203,13 @@ function connectPipes(client, upstream) {
   upstream.resume();
 }
 
-function startTorHttpBridge({ socksPort, listenPort = 0, username = '' }) {
+function startSocksHttpBridge({
+  socksHost = '127.0.0.1',
+  socksPort,
+  listenPort = 0,
+  username = '',
+  password = '',
+}) {
   const server = net.createServer((client) => {
     client.pause();
     client.setNoDelay(true);
@@ -232,8 +252,14 @@ function startTorHttpBridge({ socksPort, listenPort = 0, username = '' }) {
         if (!method || !target || !version) throw new Error('Malformed proxy request line');
         if (method === 'CONNECT') {
           const destination = parseAuthority(target, 443);
-          const upstream = await connectThroughTor({ socksPort, username, ...destination });
-          client.write('HTTP/1.1 200 Connection Established\r\nProxy-Agent: Relay\r\n\r\n');
+          const upstream = await connectThroughSocks({
+            socksHost,
+            socksPort,
+            username,
+            password,
+            ...destination,
+          });
+          client.write('HTTP/1.1 200 Connection Established\r\nProxy-Agent: Conduit\r\n\r\n');
           if (remainder.length) upstream.write(remainder);
           connectPipes(client, upstream);
           return;
@@ -248,9 +274,11 @@ function startTorHttpBridge({ socksPort, listenPort = 0, username = '' }) {
           url = new URL(`http://${hostHeader.slice(hostHeader.indexOf(':') + 1).trim()}${target}`);
         }
         if (url.protocol !== 'http:') throw new Error('Unsupported proxy request scheme');
-        const upstream = await connectThroughTor({
+        const upstream = await connectThroughSocks({
+          socksHost,
           socksPort,
           username,
+          password,
           host: url.hostname,
           port: Number(url.port) || 80,
         });
@@ -280,4 +308,13 @@ function startTorHttpBridge({ socksPort, listenPort = 0, username = '' }) {
   });
 }
 
-module.exports = { connectThroughTor, startTorHttpBridge };
+function startTorHttpBridge(options) {
+  return startSocksHttpBridge({ ...options, socksHost: '127.0.0.1' });
+}
+
+module.exports = {
+  connectThroughSocks,
+  connectThroughTor,
+  startSocksHttpBridge,
+  startTorHttpBridge,
+};

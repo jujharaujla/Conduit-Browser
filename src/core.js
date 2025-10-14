@@ -3,7 +3,7 @@
 const TOOLBAR_HEIGHT = 106;
 const LABEL_HEIGHT = 26;
 const GAP = 2;
-const MAX_SCREENS = 8;
+const MAX_SCREENS = 4;
 const DEFAULT_URL = 'relay://welcome';
 
 function normalizeURL(value) {
