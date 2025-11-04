@@ -1,0 +1,164 @@
+name: Desktop builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: 'Tag or commit to build (for example v1.0.0)'
+        required: true
+        default: main
+        type: string
+  push:
+    tags:
+      - 'v1.*'
+      - 'v2.*'
+      - 'v3.*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_ref || github.ref }}
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run checks
+        run: npm run check
+
+      - name: Verify release identity
+        shell: bash
+        env:
+          RELEASE_REF: ${{ inputs.release_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_REF" == refs/* ]]; then
+            RELEASE_TAG="${RELEASE_REF##*/}"
+          else
+            RELEASE_TAG="$RELEASE_REF"
+          fi
+          if [[ "$RELEASE_TAG" == "main" ]]; then
+            echo "Manual builds must specify a release tag, not main."
+            exit 1
+          fi
+          if ! git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}" >/dev/null 2>&1; then
+            echo "Release ref $RELEASE_TAG is not an existing tag."
+            exit 1
+          fi
+          checked_out_sha="$(git rev-parse HEAD)"
+          tagged_sha="$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          if [[ "$checked_out_sha" != "$tagged_sha" ]]; then
+            echo "Checkout mismatch: expected $tagged_sha for $RELEASE_TAG, got $checked_out_sha."
+            exit 1
+          fi
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "$package_version" != "${RELEASE_TAG#v}" ]]; then
+            echo "Version mismatch: tag $RELEASE_TAG contains package.json version $package_version."
+            exit 1
+          fi
+          echo "Building package.json version $package_version from exact tag $RELEASE_TAG ($checked_out_sha)."
+
+  build:
+    needs: test
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            os: windows-2025
+            command: npm run dist:win -- --x64 --publish never
+            artifact_path: dist/*.exe
+          - platform: macos-arm64
+            os: macos-15
+            command: npm run dist:mac -- --arm64 --publish never
+            artifact_path: |
+              dist/*.dmg
+              dist/*.zip
+          - platform: macos-x64
+            os: macos-15-intel
+            command: npm run dist:mac -- --x64 --publish never
+            artifact_path: |
+              dist/*.dmg
+              dist/*.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_ref || github.ref }}
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ${{ matrix.platform }}
+        run: ${{ matrix.command }}
+
+      - name: Upload ${{ matrix.platform }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-${{ matrix.platform }}
+          path: ${{ matrix.artifact_path }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download desktop artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: conduit-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release files
+        run: find release-assets -maxdepth 1 -type f -print
+
+      - name: Write SHA-256 checksums
+        working-directory: release-assets
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REF: ${{ inputs.release_ref || github.ref_name }}
+        run: |
+          tag="${RELEASE_REF##*/}"
+          title="Conduit $tag"
+          notes="Release artifacts built from the exact immutable tag $tag."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release-assets/* --clobber
+          else
+            gh release create "$tag" release-assets/* \
+              --verify-tag \
+              --notes "$notes" \
+              --title "$title"
+          fi
