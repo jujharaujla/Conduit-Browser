@@ -1,48 +1,111 @@
-# Conduit 0.18
+<p align="center">
+</p>
 
-Conduit is a one-to-eight-pane Electron browser for repeating ordinary browsing work across isolated sessions. Pane 1 can lead navigation, scrolling, typing, and clicks while followers keep separate cookies, storage, cache, and optional route identities.
+<h1 align="center">Conduit v3.1</h1>
 
-## What changed
+<p align="center">
+A multi-session browser that lets users control multiple isolated browser instances from a single interface.
 
-- Replaced the layered versioned renderer with one HTML file, one stylesheet, and one renderer script.
-- Replaced the competing synchronization wrappers with one pane preload and one main-process coordinator.
-- Added a live pane map showing registered, aligned, loading, paused, and catching-up panes.
-- Added focus mode, per-pane pause/resume, reset, and editable pane names.
-- Added selective following controls for navigation, scrolling, typing, and clicks.
-- Added saved workspace presets and automatic restoration of pane count, zoom, labels, and previous URLs.
-- Added native macOS shortcuts and menus, a right-click pane menu, an About window, system Light/Dark appearance, and a Conduit dock icon.
-- Simplified the toolbar and Settings interface around one warm-gray and forest-green identity.
-- Removed decorative event hashes, multiple color-theme presets, numbered section tiles, and permanent diagnostic noise.
-- Kept the ad filter optional, with a compatibility warning.
-- Kept CAPTCHA, password, file-upload, payment, purchase, voting, and account-deletion actions outside synchronization.
+</p>
 
-## Install on macOS
+<p align="center">
+  <a href="https://github.com/jujharaujla/conduit/actions/workflows/ci.yml"><img src="https://github.com/jujharaujla/conduit/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/jujharaujla/conduit/releases"><img src="https://img.shields.io/github/v/release/jujharaujla/conduit?include_prereleases" alt="Latest release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7fb5ff" alt="MIT license" /></a>
+</p>
 
-Extract the archive, open Terminal in the extracted folder, and run:
+Conduit opens one to four separate browser screens in one desktop window. The control screen can share navigation, scrolling, typing, and ordinary clicks while each other screen keeps its own cookies, storage, cache, and internet connection.
+
+It is intended for authorized website QA, session testing, localization checks, demonstrations, and repeatable multi-session browsing.
+
+> [!IMPORTANT]
+> Conduit 3.1 is unsigned. It is not an anonymity guarantee, an anti-detection tool, or a replacement for a dedicated privacy browser. Only use it with websites, accounts, and proxy services you are authorized to access.
+
+<p align="center">
+</p>
+
+## Download
+
+The current release is **Conduit 3.1.0 unstable** (`v3.1.0`). It is intended for real-world testing and is not a stability or anonymity guarantee.
+
+| Platform | Download |
+| --- | --- |
+| Windows x64 installer | `Conduit-3.1.0-windows-x64-setup.exe` |
+| Windows x64 portable | `Conduit-3.1.0-windows-x64-portable.exe` |
+| macOS Apple silicon | `Conduit-3.1.0-mac-arm64.dmg` or `.zip` |
+| macOS Intel | `Conduit-3.1.0-mac-x64.dmg` or `.zip` |
+| Checksums | `SHA256SUMS.txt` |
+
+Download release files from [GitHub Releases](https://github.com/jujharaujla/conduit/releases).
+
+### Unsigned-build warning
+
+The release artifacts are not code signed or notarized. Windows SmartScreen and macOS Gatekeeper may warn before launch. Verify the file against `SHA256SUMS.txt`, download only from this repository, and do not bypass a warning for a file from another source.
+
+## Connection modes
+
+### Direct
+
+Uses the computer's normal internet route. A device-wide VPN can be active, but all screens will normally share that VPN route.
+
+### Private routing with Tor
+
+Uses a locally running Tor SOCKS service and gives each screen a distinct SOCKS authentication identity. Conduit detects common Tor ports `9050` and `9150`. Separate identities request separate Tor circuits, but distinct exit addresses are not guaranteed.
+
+<p align="center">
+</p>
+
+## How it connects
+
+Conduit is an Electron desktop application. The same JavaScript application is packaged as native installers for macOS and Windows, with Electron providing the Chromium browser engine and desktop integration.
+
+Private routing uses a local bridge between each Electron browser session and a Tor SOCKS service. Conceptually, this is similar to running a request with cURL through a SOCKS proxy:
 
 ```bash
-npm install --registry=https://registry.npmjs.org/ --no-package-lock
+curl --proxy socks5h://127.0.0.1:9050 https://example.com
+```
+
+Conduit configures this route for each browser session instead of asking users to run cURL commands. Direct mode removes that proxy route and uses the computer's normal connection. Private routing requires a compatible local Tor SOCKS service.
+
+## Run from source
+
+Requirements:
+
+- Node.js 22 or newer.
+- npm 10 or newer.
+- macOS, Windows, or Linux.
+- Optional Tor service for private routing.
+
+```bash
+npm ci
 npm run check
 npm start
 ```
 
-After dependencies are installed, `Start Conduit.command` can also be used.
+For Tor on macOS:
 
-## Keyboard shortcuts
+```bash
+brew install tor
+brew services start tor
+```
 
-- `⌘,` opens Settings.
-- `⌘L` focuses the address bar.
-- `⌘R` reloads the focused pane.
-- `⌘⇧R` reloads every visible pane.
-- `⌘1` through `⌘8` focus a pane.
-- `⌘⇧S` saves a workspace preset.
+## Build desktop installers
 
-## Pane following
+Build on the target operating system:
 
-Pane 1 is the leader. Followers can be paused individually without closing their sessions. Settings can independently enable or disable navigation, scrolling, typing, and click following.
+```bash
+# macOS DMG and ZIP
+npm run dist:mac
 
-Security-challenge pages are skipped. Sensitive fields and actions are not mirrored.
+# Windows installer and portable EXE
+npm run dist:win
 
-## Isolated routes
+# Unpacked development build
+npm run pack
+```
 
-The isolated route option connects to a compatible local SOCKS service on port 9050 or 9150. Conduit does not launch that service itself. Route verification reports the public IP address visible to each active pane.
+Installers are written to `dist/`. The GitHub workflow builds Windows x64, macOS arm64, and macOS x64 separately.
+
+## License
+
+Conduit is released under the [MIT License](LICENSE).
