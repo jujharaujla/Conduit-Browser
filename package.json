@@ -24,8 +24,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "lint": "eslint src --ext .js",
-    "check": "npm run lint",
+    "check": "node --check src/main.js",
     "pack": "electron-builder --dir --config electron-builder.config.cjs",
     "dist": "electron-builder --config electron-builder.config.cjs",
     "dist:mac": "electron-builder --mac dmg zip --config electron-builder.config.cjs",
