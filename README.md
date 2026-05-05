@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="docs/assets/conduit-icon.svg" width="112" alt="Conduit logo" />
 </p>
 
 <h1 align="center">Conduit v3.1</h1>
@@ -22,6 +23,7 @@ It is intended for authorized website QA, session testing, localization checks, 
 > Conduit 3.1 is unsigned. It is not an anonymity guarantee, an anti-detection tool, or a replacement for a dedicated privacy browser. Only use it with websites, accounts, and proxy services you are authorized to access.
 
 <p align="center">
+  <img src="docs/assets/conduit-workspace.jpg" width="100%" alt="Conduit four-screen workspace" />
 </p>
 
 ## Download
@@ -35,8 +37,6 @@ The current release is **Conduit 3.1.0 unstable** (`v3.1.0`). It is intended for
 | macOS Apple silicon | `Conduit-3.1.0-mac-arm64.dmg` or `.zip` |
 | macOS Intel | `Conduit-3.1.0-mac-x64.dmg` or `.zip` |
 | Checksums | `SHA256SUMS.txt` |
-
-Download release files from [GitHub Releases](https://github.com/jujharaujla/conduit/releases).
 
 ### Unsigned-build warning
 
@@ -53,6 +53,7 @@ Uses the computer's normal internet route. A device-wide VPN can be active, but 
 Uses a locally running Tor SOCKS service and gives each screen a distinct SOCKS authentication identity. Conduit detects common Tor ports `9050` and `9150`. Separate identities request separate Tor circuits, but distinct exit addresses are not guaranteed.
 
 <p align="center">
+  <img src="docs/assets/conduit-settings.jpg" width="100%" alt="Conduit connection settings" />
 </p>
 
 ## How it connects
