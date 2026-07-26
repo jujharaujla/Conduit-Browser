@@ -115,7 +115,7 @@ jobs:
         run: ${{ matrix.command }}
 
       - name: Upload ${{ matrix.platform }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: conduit-${{ matrix.platform }}
           path: ${{ matrix.artifact_path }}
