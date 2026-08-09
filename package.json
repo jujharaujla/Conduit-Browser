@@ -33,7 +33,7 @@
     "release:dry": "electron-builder --publish never --config electron-builder.config.cjs"
   },
   "devDependencies": {
-    "electron": "43.2.0",
+    "electron": "43.3.0",
     "electron-builder": "26.15.3",
     "eslint": "10.8.0",
     "eslint-plugin-n": "18.2.2"
